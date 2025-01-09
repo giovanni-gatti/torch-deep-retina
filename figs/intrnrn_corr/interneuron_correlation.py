@@ -52,13 +52,12 @@ def main():
     torch.mps.empty_cache()
 
     # Build the save file path
-    save_file = "intraneuron_" + config["save_ext"]
+    save_file = "interneuron_" + config["save_ext"]
     save_file = os.path.join(config["sim_folder"], save_file)
     print("Models:")
     print("\n".join(model_paths))
     print("Saving to:", save_file)
 
-    intr_save_file = save_file.replace(config["save_ext"], "intr_" + config["save_ext"])
     main_intr_df = None
 
     print("\nLoading Interneuron Data")
@@ -127,7 +126,7 @@ def main():
                 main_intr_df = pd.concat([main_intr_df, intr_df], axis=0, ignore_index=True)
 
             # Save the dataframe to a .csv file
-            main_intr_df.to_csv(intr_save_file, sep="!", header=True, index=False)
+            main_intr_df.to_csv(save_file, sep="!", header=True, index=False)
             gc.collect()
 
 
