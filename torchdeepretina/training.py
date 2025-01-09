@@ -25,12 +25,12 @@ import gc
 import resource
 import json
 
-# if torch.cuda.is_available():
-#     DEVICE = torch.device("cuda:0")
-# else:
-#     DEVICE = torch.device("cpu")
-
-DEVICE = torch.device("mps")
+if torch.cuda.is_available():
+    DEVICE = torch.device("cuda:0")
+elif torch.backends.mps.is_available():
+    DEVICE = torch.device("mps")
+else:
+    DEVICE = torch.device("cpu")
 
 
 class Trainer:
@@ -91,7 +91,6 @@ class Trainer:
             dict of relevant hyperparameters
         """
         # Initialize miscellaneous parameters
-        ### USELESS
         torch.cuda.empty_cache()
         batch_size = hyps['batch_size']
 
@@ -124,7 +123,6 @@ class Trainer:
             s = "Beginning training for {} -- CV {}"
             s = s.format(hyps['save_folder'],cv_idx)
             print(s)
-            ###/ USELESS
 
             # Get Data, Make Model, Record Initial Hyps and Model
             train_data, test_data = get_data(hyps)
@@ -208,10 +206,6 @@ class Trainer:
                     else:
                         activity_l1 = hyps['l1']*torch.norm(y, 1).float()
                         activity_l1 = activity_l1.mean()
-                    if 'gauss_reg' in hyps and hyps['gauss_reg'] > 0:
-                        g_coef = hyps['gauss_loss_coef']
-                        gauss_reg = hyps['gauss_reg']
-                        activity_l1 += g_coef*gauss_reg.get_loss()
 
                     # Backwards Pass
                     loss = error + activity_l1

@@ -513,15 +513,12 @@ def load_interneuron_data(root_path="~/interneuron_data/",
             for k in f.keys():
                 if k in stim_keys:
                     if join_stims:
-                        print(f"SubKeys: {f[k].keys()}")
                         arr = np.asarray(f[k+'/stimuli'])
-                        shape = prepare_stim(arr, k).shape # Simply normalizes the data using meand and standard deviation
-                        print(f"Shape: {shape}")    
+                        shape = prepare_stim(arr, k).shape # Simply normalizes the data using meand and standard deviation   
                         shapes.append(shape)
                         s = '/detrended_membrane_potential'
                         mem_pot = np.asarray(f[k+s])
                         mem_shapes.append(mem_pot.shape)
-                        print(f"Mem shape: {mem_pot.shape}")
                         del mem_pot
                     else:
                         try:
