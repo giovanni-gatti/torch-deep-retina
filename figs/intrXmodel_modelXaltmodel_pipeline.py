@@ -24,17 +24,15 @@ your purposes.
 import torch
 import pandas as pd
 import torchdeepretina as tdr
-from torchdeepretina.utils import perm_similarity,mtx_cor
+from torchdeepretina.utils import mtx_cor
 import numpy as np
-import h5py as h5
-import matplotlib.pyplot as plt
-import time
 import sys
 import os
 import gc
 import resource
 
 DEVICE = torch.device("cuda:0")
+mps_device = torch.device("mps")
 
 if __name__=="__main__":
     n_samples = 5000 # Number of samples used for comparison
@@ -50,7 +48,7 @@ if __name__=="__main__":
     if not os.path.exists(sim_folder):
         os.mkdir(sim_folder)
 
-    grand_folders = sys.argv[1:]
+    grand_folders = sys.argv[1:] # Folders given in the arguments
     torch.cuda.empty_cache()
     pre_intr_df = None
     for i,grand_folder in enumerate(grand_folders):
@@ -123,7 +121,7 @@ if __name__=="__main__":
     data = tdr.datas.loadexpt("15-10-07", "all", "naturalscene",
                                             'train', history=0)
     stim = data.X[:n_samples]
-    interneuron_data = tdr.datas.load_interneuron_data(
+    interneuron_data = tdr.datas.load_interneuron_data( # Loads all the interneuron .h5 files and joins the data
                                             root_path=intr_data_path,
                                             filter_length=40,
                                             stim_keys={"boxes"},

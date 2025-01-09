@@ -155,15 +155,16 @@ def loadexpt(expt, cells, filename, train_or_test, history, nskip=0,
     elif isinstance(cells, int):
         cells = [cells]
 
-    # load the hdf5 file
-    with _loadexpt_h5(expt, filename, root=data_path) as f:
-
-        expt_length = f[train_or_test]['time'].size
+    with _loadexpt_h5(expt, filename, root=data_path) as f: # Simply loads the file
+        expt_length = f[train_or_test]['time'].size 
+        print(f"Experiment length: {expt_length}")
 
         # load the stimulus into memory as a numpy array, and z-score
         if cutout_width is None:
             stim = np.asarray(f[train_or_test]['stimulus'])
             stim = stim.astype('float32')
+            print(f"Stimulus shape: {stim.shape}")
+        ### IRRELEVANT
         else:
             arr = np.asarray(f[train_or_test]['stimulus'])
             assert len(cells) == 1, "only 1 cell allowed for cutout"
@@ -172,6 +173,7 @@ def loadexpt(expt, cells, filename, train_or_test, history, nskip=0,
                                        span=cutout_width,
                                        pad_to=arr.shape[-1])
             stim = stim.astype('float32')
+        ###/ IRRELEVANT
         stats = {}
         if norm_stats is not None:
             if isinstance(norm_stats, dict):
@@ -182,26 +184,32 @@ def loadexpt(expt, cells, filename, train_or_test, history, nskip=0,
         else:
             stats['mean'] = stim.mean()
             stats['std'] = stim.std()+1e-7
-        stim = (stim-stats['mean'])/stats['std']
+        stim = (stim-stats['mean'])/stats['std'] # Standardize the stimulus
 
         # apply clipping to remove the stimulus just after transitions
         num_blocks = 1 if not (train_or_test=='train' and nskip>0)\
-                              else utils.try_key(NUM_BLOCKS,expt,1)
-        valid_indices = np.arange(expt_length).reshape(num_blocks,-1)
-        valid_indices = valid_indices[:, nskip:].ravel()
+                              else utils.try_key(NUM_BLOCKS,expt,1) # 1
+        valid_indices = np.arange(expt_length).reshape(num_blocks,-1) # Array with one row (since nskip is 0) with values from 0 to expt_length-1
+        valid_indices = valid_indices[:, nskip:].ravel() # In our case this does nothing (since nskip is 0)
 
         # reshape into the Toeplitz matrix (nsamps, hist, # *stim_dim)
         stim_reshaped = stim[valid_indices]
+        print(f"Stimulus reshaped shape: {stim_reshaped.shape}")
         if history is not None and history > 0:
-            stim_reshaped = rolling_window(stim_reshaped, history,
+            stim_reshaped = rolling_window(stim_reshaped, history, # Creates overlapping windows of size equal to the image depth along the time axis (time_axis=0).
                                                           time_axis=0)
-
+        print(f"Rolling stimulus shape: {stim_reshaped.shape}")
         # get the response for this cell (nsamples, ncells)
         s = 'response/firing_rate_10ms'
         if cells is None:
             cells = list(range(f[train_or_test][s].shape[0]))
-        stream = f[train_or_test][s][cells]
+
+        print(f"Cells: {cells}")
+        
+        stream = f[train_or_test][s][cells] # Get the response for the selected cells (ncells, ntimesteps)
+        print(f"Stream shape: {stream.shape}")
         resp = np.array(stream).T[valid_indices]
+        print(f"Response shape: {resp.shape}")
         if history is not None and history > 0:
             resp = resp[history:]
 
@@ -211,6 +219,7 @@ def loadexpt(expt, cells, filename, train_or_test, history, nskip=0,
         if history is not None and history > 0:
             spk_hist = rolling_window(spk_hist, history, time_axis=0)
 
+        print(f"Spike history shape: {spk_hist.shape}")
         # get the ganglion cell receptive field centers
         if expt in CENTERS:
             centers = np.asarray([CENTERS_DICT[expt][c] for c in cells])
@@ -351,7 +360,7 @@ def loadintrexpt(expt, cells, stim_type, history, H=None, W=None,
         if None, cross validation will be ignored. if int, denotes the
         number of splits of the data to be completed.
     """
-    if ".h5" != expt[-3:]: expt = expt + ".h5"
+    if ".h5" != expt[-3:]: expt = expt + ".h5" # Add file extension if not present
     files = [expt]
     if stim_type == "naturalscene" or stim_type == "whitenoise":
         stim_keys = {"boxes"}
@@ -363,12 +372,12 @@ def loadintrexpt(expt, cells, stim_type, history, H=None, W=None,
         stim_keys.add("lines")
 
     if history is None: history = 0
-    train_stim,mem_pots,_ = load_interneuron_data(data_path,
+    train_stim,mem_pots,_ = load_interneuron_data(data_path, # Load training stimuli and membrane potentials 
                                                 files=files,
                                                 filter_length=history,
-                                                stim_keys=stim_keys,
+                                                stim_keys=stim_keys, # Using boxes and lines
                                                 join_stims=True,
-                                                window=True)
+                                                window=True) # Applies a rolling window of size 40
     if H is None: H = train_stim[files[0]].shape[1]
     if W is None: W = H
     train_stim = tdrstim.spatial_pad(train_stim[files[0]], H=H, W=W)
@@ -492,10 +501,6 @@ def load_interneuron_data(root_path="~/interneuron_data/",
         files = [f+".h5" for f in INTR_FILES]
     full_files = [os.path.expanduser(os.path.join(root_path, name))\
                                                   for name in files]
-    file_ids = []
-    for f in full_files:
-        file_ids.append(re.split('_|\.', f)[0])
-    num_pots = []
     stims = dict()
     mem_pots = dict()
     for fi,file_name in zip(full_files,files):
@@ -508,12 +513,15 @@ def load_interneuron_data(root_path="~/interneuron_data/",
             for k in f.keys():
                 if k in stim_keys:
                     if join_stims:
+                        print(f"SubKeys: {f[k].keys()}")
                         arr = np.asarray(f[k+'/stimuli'])
-                        shape = prepare_stim(arr, k).shape
+                        shape = prepare_stim(arr, k).shape # Simply normalizes the data using meand and standard deviation
+                        print(f"Shape: {shape}")    
                         shapes.append(shape)
                         s = '/detrended_membrane_potential'
                         mem_pot = np.asarray(f[k+s])
                         mem_shapes.append(mem_pot.shape)
+                        print(f"Mem shape: {mem_pot.shape}")
                         del mem_pot
                     else:
                         try:
@@ -591,6 +599,9 @@ def load_interneuron_data(root_path="~/interneuron_data/",
                     mem_pots[file_name][:,mstartx:mendx] = mem_pot
                     startx = endx
                     mstartx = mendx
+    
+    # print(f"Stims: {stims['amacrines_early_2012.h5'].shape}")
+    # print(f"Mem_pots: {mem_pots['amacrines_early_2012.h5'].shape}")
     return stims, mem_pots, full_files
 
 def cv_split(Xs, cv_idx, n_folds):

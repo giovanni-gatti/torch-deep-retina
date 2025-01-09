@@ -23,7 +23,7 @@ from torchdeepretina.utils import load_json
 from torchdeepretina.analysis import analysis_pipeline
 
 if __name__ == "__main__":
-    hyperparams_file = "hyps/hyperparams.json"
+    hyperparams_file = "training_scripts/hyperparams.json"
     hyperranges_file = None
     device = 0
     if len(sys.argv) > 1:
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         s = "{} WARNING: YOU ARE USING SHIFTED LABELS {}"
         print(s.format("!"*5))
 
-    sleep_time = 8
+    sleep_time = 1
     hyps["save_root"] = os.path.abspath(os.path.expanduser(
         hyps.get("save_root", "./")
     ))

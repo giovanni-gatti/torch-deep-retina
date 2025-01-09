@@ -27,8 +27,6 @@
     "img_shape":[[40,50,50]],
     "stackconvs":[false],
     "save_every_epoch":[false],
-    "stackconvs":[false],
-    "save_every_epoch":[false],
     "train_loop":["retinotopic_loop"],
     "retinotopic":[true],
     "semantic_scale":[7],

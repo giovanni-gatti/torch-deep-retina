@@ -6,7 +6,7 @@ from torchdeepretina.utils import get_conv_layer_names
 import numpy as np
 from scipy import signal
 
-DEVICE = torch.device('cuda:0')
+DEVICE = torch.device("mps")
 
 def try_kwarg(kwargs, key, default):
     try:

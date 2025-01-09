@@ -25,10 +25,12 @@ import gc
 import resource
 import json
 
-if torch.cuda.is_available():
-    DEVICE = torch.device("cuda:0")
-else:
-    DEVICE = torch.device("cpu")
+# if torch.cuda.is_available():
+#     DEVICE = torch.device("cuda:0")
+# else:
+#     DEVICE = torch.device("cpu")
+
+DEVICE = torch.device("mps")
 
 
 class Trainer:
@@ -53,7 +55,7 @@ class Trainer:
 
     def train(self,hyps,verbose=True):
         if utils.try_key(hyps, "retinotopic", False):
-            train_method = getattr(self, "retinotopic_loop")
+            train_method = getattr(self, "retinotopic_loop") # If retinotopic train using retinopic loop
         else:
             train_method = self.train_loop
         try:
@@ -89,6 +91,7 @@ class Trainer:
             dict of relevant hyperparameters
         """
         # Initialize miscellaneous parameters
+        ### USELESS
         torch.cuda.empty_cache()
         batch_size = hyps['batch_size']
 
@@ -121,6 +124,7 @@ class Trainer:
             s = "Beginning training for {} -- CV {}"
             s = s.format(hyps['save_folder'],cv_idx)
             print(s)
+            ###/ USELESS
 
             # Get Data, Make Model, Record Initial Hyps and Model
             train_data, test_data = get_data(hyps)
@@ -194,6 +198,8 @@ class Trainer:
                 for i,(x,label) in enumerate(data_distr.train_sample()):
                     optimizer.zero_grad()
                     label = label.float()
+                    model = model.to(DEVICE)
+                    x = x.to(DEVICE)
 
                     # Error Evaluation
                     y,error = static_eval(x, label, model, loss_fn)
@@ -204,6 +210,7 @@ class Trainer:
                         activity_l1 = activity_l1.mean()
                     if 'gauss_reg' in hyps and hyps['gauss_reg'] > 0:
                         g_coef = hyps['gauss_loss_coef']
+                        gauss_reg = hyps['gauss_reg']
                         activity_l1 += g_coef*gauss_reg.get_loss()
 
                     # Backwards Pass
@@ -465,6 +472,7 @@ class Trainer:
             for i,(x,label) in enumerate(data_distr.train_sample()):
                 optimizer.zero_grad()
                 label = label.float()
+                x.to(DEVICE)
 
                 # Error Evaluation
                 y,error = static_eval(x, label, model, loss_fn)
@@ -636,6 +644,8 @@ class Trainer:
             f.write(s)
         return results
 
+
+# Entry point of training script
 def hyper_search(hyps, hyp_ranges, early_stopping=10,
                                  stop_tolerance=.01):
     """
@@ -679,7 +689,7 @@ def hyper_search(hyps, hyp_ranges, early_stopping=10,
             f.write(s)
         f.write('\n')
 
-    hyper_q = Queue()
+    hyper_q = Queue() # Initialize a queue to hold hyperparameters
     hyper_q = fill_hyper_q(hyps, hyp_ranges, list(hyp_ranges.keys()),
                                                       hyper_q, idx=0)
     total_searches = hyper_q.qsize()
@@ -687,7 +697,7 @@ def hyper_search(hyps, hyp_ranges, early_stopping=10,
 
     es = early_stopping
     st = stop_tolerance
-    trainer = Trainer(early_stopping=es, stop_tolerance=st)
+    trainer = Trainer(early_stopping=es, stop_tolerance=st) # Initialize Trainer
 
     result_count = 0
     print("Starting Hyperloop")
@@ -695,7 +705,7 @@ def hyper_search(hyps, hyp_ranges, early_stopping=10,
         print("Searches left:", hyper_q.qsize(),"-- Running Time:",
                                              time.time()-starttime)
         hyps = hyper_q.get()
-        results = trainer.train(hyps, verbose=True)
+        results = trainer.train(hyps, verbose=True) # Actually start training
         if results is not None:
             with open(results_file,'a') as f:
                 results = " -- ".join([str(k)+":"+str(results[k]) for\
@@ -709,12 +719,8 @@ def hyper_search(hyps, hyp_ranges, early_stopping=10,
 def print_train_update(error, l1, model, n_loops, i):
     loss = error +  l1
     s = "Loss: {:.5e}".format(loss.item())
-    if model.kinetic:
-        ps = model.kinetics.named_parameters()
-        ps = [str(name)+":"+str(round(p.data.item(),4)) for name,p\
-                                                       in list(ps)]
-        s += " | "+" | ".join(ps)
     s = "{} | {}/{}".format(s,i,n_loops)
+    print(f"Error: {error.item()}, Activity L1: {l1.item()}, Total Loss: {loss.item()}")
     print(s, end="       \r")
 
 def record_session(hyps, model):
@@ -824,7 +830,7 @@ def static_eval(x, label, model, loss_fn):
     loss_fn: function
         the loss function. should accept args: (pred, true)
     """
-    pred = model(x.to(DEVICE))
+    pred = model(x)
     error = loss_fn(pred, label.to(DEVICE))
     return pred,error
 
@@ -835,9 +841,9 @@ def get_data(hyps):
     """
     cutout_size = None if 'cutout_size' not in hyps else\
                                       hyps['cutout_size']
-    img_depth = hyps.get("img_depth", hyps['img_shape'][0])
+    img_depth = hyps.get("img_depth", hyps['img_shape'][0]) # Get the number of channels
 
-    if hyps['dataset'] in set(tdrintr.centers.keys()):
+    if hyps['dataset'] in set(tdrintr.centers.keys()): # If the dataset name is in the list of intracellular datasets
         data_path=utils.try_key(hyps,'datapath','~/interneuron_data/')
         train_data = loadintrexpt(expt=hyps['dataset'],
                                   cells=hyps['cells'],
@@ -850,7 +856,7 @@ def get_data(hyps):
                                   data_path=data_path)
     else:
         data_path = utils.try_key(hyps,'datapath','~/experiments/data')
-        train_data = loadexpt(hyps['dataset'],hyps['cells'],
+        train_data = loadexpt(hyps['dataset'],hyps['cells'], # Loads an experiment from an h5 file on disk
                                 hyps['stim_type'],'train',img_depth,0,
                                 cutout_width=cutout_size,
                                 data_path=data_path)

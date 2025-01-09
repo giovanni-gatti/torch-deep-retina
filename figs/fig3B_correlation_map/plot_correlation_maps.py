@@ -1,10 +1,5 @@
-import torchdeepretina as tdr
-import torch
 import numpy as np
 import h5py
-import os
-import scipy.stats
-import re
 import h5py
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec

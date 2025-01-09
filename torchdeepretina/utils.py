@@ -16,10 +16,13 @@ from sklearn.utils.extmath import randomized_svd
 from scipy.optimize import linear_sum_assignment
 import subprocess
 
-if torch.cuda.is_available():
-    DEVICE = torch.device("cuda:0")
-else:
-    DEVICE = torch.device("cpu")
+# if torch.cuda.is_available():
+#     DEVICE = torch.device("cuda:0")
+# else:
+#     DEVICE = torch.device("cpu")
+
+DEVICE = torch.device("mps")
+DEVICE = torch.device("cpu")
 
 def get_shifts(row_steps=0, col_steps=0, n_row=50, n_col=50,
                                     row_pad=15, col_pad=15):
@@ -892,6 +895,7 @@ def inspect(model, X, insp_keys=set(), batch_size=500, to_numpy=True,
         layer_outs: dict of np arrays or torch cpu tensors
             "outputs": default key for output layer
     """
+    model.to(DEVICE)
     layer_outs = dict()
     handles = []
     insp_keys_copy = set()
@@ -908,6 +912,7 @@ def inspect(model, X, insp_keys=set(), batch_size=500, to_numpy=True,
     insp_keys = insp_keys_copy
     if not isinstance(X,torch.Tensor):
         X = torch.FloatTensor(X)
+        X.to(DEVICE)
 
     # prev_grad_state is used to ensure we do not mess with an outer
     # "with torch.no_grad():" statement
@@ -1030,7 +1035,7 @@ def get_stim_grad(model, X, layer, cell_idx, batch_size=500,
         rng = tqdm(rng)
     for i in rng:
         idx = i*batch_size
-        x = X[idx:idx+batch_size].to(device)
+        x = X[idx:idx+batch_size].to(mps_device)
         if model.recurrent:
             resp, hs = model(x, hs)
             hs = [h.data for h in hs]
@@ -1500,12 +1505,16 @@ def compute_sta(model, layer, cell_index, layer_shape=None,
         X = torch.FloatTensor(X)
     X.requires_grad = True
 
+    X.to(mps_device)
+    print(X.shape)
+
     # compute the gradient of the model with respect to the stimulus
     drdx = get_stim_grad(model, X, layer, cell_index,
                              layer_shape=layer_shape,
                              batch_size=batch_size,
                              to_numpy=to_numpy,
                              verbose=verbose)
+    print(drdx.shape)
     sta = drdx.mean(0)
     return sta
 
