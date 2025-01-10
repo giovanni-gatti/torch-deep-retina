@@ -24,6 +24,7 @@ import psutil
 import gc
 import resource
 import json
+from torchinfo import summary  
 
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda:0")
@@ -792,6 +793,8 @@ def get_model_and_distr(hyps, train_data):
     """
     model = globals()[hyps['model_type']](**hyps)
     model = model.to(DEVICE)
+    print(summary(model, input_size=(1, 40, 50, 50)))
+    exit()
     batch_size = hyps['batch_size']
     seq_len = 1
     shift_labels = utils.try_key(hyps,'shift_labels',False)

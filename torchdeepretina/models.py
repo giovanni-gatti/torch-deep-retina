@@ -30,6 +30,7 @@ class TDRModel(nn.Module):
                                                 recurrent=False,
                                                 kinetic=False,
                                                 convgc=False,
+                                                skip_connect=False,
                                                 centers=None,
                                                 bnorm_d=1,
                                                 activ_fxn='ReLU',
@@ -78,6 +79,8 @@ class TDRModel(nn.Module):
         convgc: bool
             if true, final layer is convolutional. If false, final
             layer is fully connected.
+        skip_connect: bool
+            if true, the output of the first StackedConvolution layer is downsampled using interpolation and then connected to the last layer.
         centers: list of tuples of ints
             the list should have a row, col coordinate for the center
             of each ganglion cell receptive field.
@@ -123,6 +126,7 @@ class TDRModel(nn.Module):
         self.recurrent = recurrent
         self.kinetic = kinetic
         self.convgc = convgc
+        self.skip_connect = skip_connect
         self.centers = centers
         self.bnorm_d = bnorm_d
         assert bnorm_d == 1 or bnorm_d == 2, "Only 1 and 2 dim\
@@ -774,6 +778,28 @@ class VaryModel(TDRModel):
     def forward(self, x):
         if not self.training and self.infr_exp:
             return torch.exp(self.sequential(x))
+        
+        if self.skip_connect:
+            # Run the input through the first stacked convoluion block
+            x = self.sequential[0](x)
+            for i in range(1,4):
+                x = self.sequential[i](x)
+            
+            # Downsample the output of the first stacked convolution block to concatenate it with the output of the second directly
+            skip_downsampled = nn.functional.interpolate(x, size=(26, 26), mode='bilinear', align_corners=False)
+
+            # Run the input through the second stacked convolution block
+            for i in range(4,8):
+                x = self.sequential[i](x)
+
+            # Concatenate the output of the second stacked convolution block with the downsampled output of the first, allowing the skip connection
+            x = x + skip_downsampled
+            
+            # Run the concatenated output through the final block
+            for i in range(8,len(self.sequential)):
+                x = self.sequential[i](x)
+            return x
+
         return self.sequential(x)
 
     def deactivate_grads(self, deactiv=True):
