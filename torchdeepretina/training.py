@@ -715,7 +715,6 @@ def print_train_update(error, l1, model, n_loops, i):
     loss = error +  l1
     s = "Loss: {:.5e}".format(loss.item())
     s = "{} | {}/{}".format(s,i,n_loops)
-    print(f"Error: {error.item()}, Activity L1: {l1.item()}, Total Loss: {loss.item()}")
     print(s, end="       \r")
 
 def record_session(hyps, model):
