@@ -6,21 +6,21 @@ import h5py
 from tqdm import tqdm
 import torch
 
+import gc
+
+gc.collect()
+torch.mps.empty_cache()
+
 mps_device = torch.device("mps")
 
 if __name__=="__main__":
     prepath = os.path.expanduser("./models") # path to model files
-    whitenoise_model_files =[
-        "convgc/convgc_64_dataset15-11-21b_stim_typewhitenoise",
-        "convgc/convgc_53_dataset15-10-07_stim_typewhitenoise",
-        "convgc/convgc_57_dataset15-11-21a_stim_typewhitenoise",
-    ]
+
     naturalscene_model_files = [
-        '15-10-07_naturalscene.pt',
-        '15-11-21a_naturalscene.pt'
+        'naturalscene/skip_15-10-07_naturalscene.pt',
     ]
     model_folders = [os.path.join(prepath,f) for f in naturalscene_model_files]
-    layers = ["sequential.1","sequential.5"]
+    layers = ["sequential.0","sequential.4"]
 
 
     filter_length = 40
@@ -39,7 +39,7 @@ if __name__=="__main__":
                 model.to(mps_device)
                 stim = tdr.stimuli.spatial_pad(main_stim,model.img_shape[1],model.img_shape[2])
                 stim = tdr.stimuli.concat(stim,nh=model.img_shape[0])
-                model_output = tdr.utils.inspect(model, stim, insp_keys=layers, batch_size=500) # get model outputs for the selected layers
+                model_output = tdr.utils.inspect(model, stim, insp_keys=layers, batch_size=600) # get model outputs for the selected layers
                 for ci, mem_pot in enumerate(mem_pots[cell_file][stim_key]):
                     for l,layer in enumerate(layers):
                         for chan in tqdm(range(model.chans[1])):

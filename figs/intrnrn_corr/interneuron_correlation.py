@@ -45,7 +45,8 @@ def main():
     whitenoise_checkpoints   = os.listdir(os.path.join(prepath, "whitenoise"))
     whitenoise_checkpoints   = [os.path.join("whitenoise", checkpoint) for checkpoint in whitenoise_checkpoints]
     # Build the full list of model paths
-    model_files = naturalscene_checkpoints + whitenoise_checkpoints
+    # model_files = naturalscene_checkpoints + whitenoise_checkpoints
+    model_files = naturalscene_checkpoints
     model_paths = [os.path.join(prepath, f) for f in model_files]
 
     # Clear the GPU cache
